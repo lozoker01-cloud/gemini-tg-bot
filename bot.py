@@ -25,7 +25,7 @@ async def handle_message(message: Message):
     await bot.send_chat_action(chat_id=message.chat.id, action="typing")
     try:
         response = model.generate_content(message.text)
-        await message.answer(response.text, parse_mode="Markdown")
+        await message.answer(response.text)
     except Exception as e:
         await message.answer(f"Ошибка API: {e}")
 
