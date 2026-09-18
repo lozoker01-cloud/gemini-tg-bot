@@ -34,7 +34,7 @@ async def handle_message(message: Message):
                     "content": message.text,
                 }
             ],
-            model="llama-3.3-70b-versatile",
+            model="llama-3.3-70b-instant",
         )
         
         # Извлекаем текст ответа и отправляем без форматирования Markdown
