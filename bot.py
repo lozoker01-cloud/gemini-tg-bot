@@ -1,31 +1,46 @@
 import asyncio
 import os
-import google.generativeai as genai
 from aiogram import Bot, Dispatcher
 from aiogram.filters import CommandStart
 from aiogram.types import Message
 from aiohttp import web
+from groq import AsyncGroq
 
 # Получаем ключи из безопасных переменных окружения сервера
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-3.6-flash')
-
+# Инициализируем бота и диспетчер
 bot = Bot(token=TELEGRAM_TOKEN)
 dp = Dispatcher()
 
+# Инициализируем асинхронный клиент Groq
+client = AsyncGroq(api_key=GROQ_API_KEY)
+
 @dp.message(CommandStart())
 async def cmd_start(message: Message):
-    await message.answer("Привет! Бот успешно запущен на сервере.")
+    await message.answer("Привет! Я переведен на новые мощности и готов к работе.")
 
 @dp.message()
 async def handle_message(message: Message):
     await bot.send_chat_action(chat_id=message.chat.id, action="typing")
+    
     try:
-        response = model.generate_content(message.text)
-        await message.answer(response.text)
+        # Отправляем текст пользователя в Groq
+        chat_completion = await client.chat.completions.create(
+            messages=[
+                {
+                    "role": "user",
+                    "content": message.text,
+                }
+            ],
+            model="llama3-70b-8192",
+        )
+        
+        # Извлекаем текст ответа и отправляем без форматирования Markdown
+        response_text = chat_completion.choices[0].message.content
+        await message.answer(response_text)
+        
     except Exception as e:
         await message.answer(f"Ошибка API: {e}")
 
@@ -39,13 +54,12 @@ async def web_server():
     runner = web.AppRunner(app)
     await runner.setup()
     
-    # Render сам передает нужный порт через переменную окружения PORT
     port = int(os.environ.get("PORT", 8080))
     site = web.TCPSite(runner, '0.0.0.0', port)
     await site.start()
 
 async def main():
-    # Запускаем одновременно и веб-сервер, и прослушивание Telegram
+    # Запускаем одновременно веб-сервер и опрос Telegram
     await asyncio.gather(
         web_server(),
         dp.start_polling(bot)
